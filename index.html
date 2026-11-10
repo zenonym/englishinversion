@@ -304,14 +304,6 @@
     .tile.aux, .tile.verb, .tile.subject { border-bottom-width: 3px; }
 
     /* ---------- Exam ---------- */
-    #exam-form label { display: block; margin-top: 14px; font-weight: 700; font-size: .9rem; color: var(--matcha-900); }
-    #exam-form textarea {
-      display: block; width: 100%; padding: 12px 14px; margin-top: 6px;
-      border: 1px solid var(--line); border-radius: 12px; background: #fff;
-      font: inherit; resize: vertical;
-      transition: border-color .15s, box-shadow .15s;
-    }
-    #exam-form textarea:focus { outline: none; border-color: var(--matcha-600); box-shadow: 0 0 0 4px #9bbb7c40; }
     .exam-given { display: inline-block; padding: 5px 12px; border-radius: 999px; background: var(--matcha-200); color: var(--matcha-900); font-weight: 800; }
     .exam-top { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
     .exam-top progress { flex: 1; height: 8px; appearance: none; border: 0; border-radius: 999px; overflow: hidden; background: var(--matcha-100); }
@@ -319,9 +311,6 @@
     .exam-top progress::-webkit-progress-value { background: linear-gradient(90deg, var(--matcha-600), var(--matcha-400)); border-radius: 999px; transition: width .3s var(--ease); }
     .exam-top progress::-moz-progress-bar { background: var(--matcha-600); border-radius: 999px; }
     .exam-count { font-size: .85rem; font-weight: 800; color: var(--muted); white-space: nowrap; }
-    #exam-answer { font-size: 1.1rem; }
-    .exam-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; }
-    .exam-actions .build-hint { margin: 16px 0 0; }
     .type-stats { list-style: none; padding: 0; margin: 12px 0 0; display: grid; gap: 10px; }
     .type-stats li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 10px; font-size: .9rem; }
     .type-stats .bar { grid-column: 1 / -1; height: 7px; border-radius: 999px; background: #ffffff33; overflow: hidden; }
@@ -425,14 +414,6 @@
       <div class="exam-top" id="exam-top"><progress id="exam-bar" max="20" value="0"></progress><span class="exam-count" id="exam-count"></span></div>
       <h2 class="question-title" id="exam-prompt"></h2>
       <p class="original"><strong>Original sentence</strong> <span id="exam-original"></span></p>
-      <form id="exam-form">
-        <label for="exam-answer">Your sentence</label>
-        <textarea id="exam-answer" rows="2" required autocomplete="off" autocapitalize="off" spellcheck="false"></textarea>
-        <div class="exam-actions">
-          <button class="check" type="submit">Submit</button>
-          <p class="build-hint">Press Enter to submit. Capitals and punctuation don’t matter.</p>
-        </div>
-      </form>
       <div id="exam-results" hidden>
         <h2 id="exam-score" tabindex="-1"></h2>
         <div class="type-stats-box"><h3 class="stats-title">This exam by type</h3><ul class="type-stats" id="result-stats"></ul></div>
@@ -483,7 +464,7 @@
         <span id="ending"></span>
       </div>
     </div>
-    <p class="tile-legend"><mark class="aux">Auxiliary</mark><mark class="verb">Main verb</mark><mark class="subject">Subject</mark></p>
+    <p class="tile-legend" id="tile-legend"><mark class="aux">Auxiliary</mark><mark class="verb">Main verb</mark><mark class="subject">Subject</mark></p>
 
     <button id="check" class="check" type="button">Check</button>
     <button id="next" class="check" type="button" hidden>Next question</button>
@@ -971,12 +952,13 @@
       const data = tileById.get(id);
       const button = document.createElement("button");
       button.type = "button";
-      button.className = ["tile", data.kind].filter(Boolean).join(" ");
+      const kind = examMode ? "" : data.kind;
+      button.className = ["tile", kind].filter(Boolean).join(" ");
       button.disabled = solved;
       button.dataset.tileId = id;
       button.dataset.zone = zone;
       button.textContent = data.text;
-      const role = { aux: "auxiliary", verb: "main verb", subject: "subject" }[data.kind];
+      const role = { aux: "auxiliary", verb: "main verb", subject: "subject" }[kind];
       button.setAttribute("aria-label", [data.text, role, zone === "bank" ? "available" : "in answer"].filter(Boolean).join(", "));
       button.addEventListener("pointerdown", event => {
         if (!event.isPrimary || event.button !== 0) return;
@@ -1031,7 +1013,12 @@
       render();
     }
 
+    let examMode = false;
     check.addEventListener("click", () => {
+      if (examMode) {
+        submitExamTiles();
+        return;
+      }
       solved = answerIds.length === correctOrder.length && answerIds.every((id, i) => tileById.get(id).text === correctOrder[i]);
       const round = questions[questionIndex];
       feedback.className = solved ? "ok" : "bad";
@@ -1078,28 +1065,33 @@
       }
       answerIds = [];
       solved = false;
-      updateClassProgress();
+      if (!examMode) updateClassProgress();
       document.getElementById("original").textContent = round.original;
       document.getElementById("instruction").textContent = `Rewrite starting with “${round.start}”.`;
       const starter = document.getElementById("starter");
       starter.textContent = round.start;
-      starter.className = ["Had", "Should"].includes(round.start) ? "starter aux" : "starter";
+      starter.className = !examMode && ["Had", "Should"].includes(round.start) ? "starter aux" : "starter";
+      document.getElementById("instruction").hidden = examMode;
+      document.getElementById("original").parentElement.hidden = examMode;
+      document.getElementById("tile-legend").hidden = examMode;
+      check.textContent = examMode ? "Submit" : "Check";
       document.getElementById("ending").textContent = round.end || "";
       answerZone.classList.remove("correct", "wrong");
       feedback.textContent = "";
       check.hidden = false;
       next.hidden = true;
       next.textContent = questionIndex === questions.length - 1 ? "Finish section" : "Next question";
-      lesson.hidden = !round.lesson;
-      exercise.hidden = Boolean(round.lesson);
-      if (round.lesson) {
+      const showLesson = Boolean(round.lesson) && !examMode;
+      lesson.hidden = !showLesson;
+      exercise.hidden = showLesson;
+      if (showLesson) {
         document.getElementById("lesson-title").textContent = round.lesson[0];
         document.getElementById("lesson-text").textContent = round.lesson[1];
         colourExplanation(document.getElementById("lesson-chinese"),
           chineseSpecial[round.lesson[0]] || chineseRules[sectionChinese]);
       }
-      showDemo(questionIndex === 0 ? sectionDemos[demoIndex] : null);
-      showLessonVideo(questionIndex === 0 ? lessonVideos[sectionChinese] : null);
+      showDemo(questionIndex === 0 && !examMode ? sectionDemos[demoIndex] : null);
+      showLessonVideo(questionIndex === 0 && !examMode ? lessonVideos[sectionChinese] : null);
       render();
     }
 
@@ -1155,8 +1147,6 @@
     }
 
     const exam = document.getElementById("exam");
-    const examForm = document.getElementById("exam-form");
-    const examAnswer = document.getElementById("exam-answer");
     const examTop = document.getElementById("exam-top");
     const EXAM_LENGTH = 20;
     // Extra questions used only in the exam, one list per section (same order as sections).
@@ -1373,37 +1363,34 @@
         ? `Reply to the first sentence with a short answer starting with “${round.start}”.`
         : `Rewrite the sentence starting with “${round.start}”.${round.start === "Little" ? " Use know." : ""}`;
       examOriginal.textContent = round.original;
-      examAnswer.value = `${round.start} `;
-      examAnswer.focus();
-      examAnswer.setSelectionRange(examAnswer.value.length, examAnswer.value.length);
+      questions = examQuestions;
+      questionIndex = examResponses.length;
+      loadQuestion();
+      bank.querySelector("button")?.focus();
     }
-    examAnswer.addEventListener("keydown", event => {
-      if (event.key === "Enter" && !event.shiftKey) {
-        event.preventDefault();
-        examForm.requestSubmit();
-      }
-    });
     document.getElementById("start-exam").addEventListener("click", () => {
+      examMode = true;
       examQuestions = buildExam();
       examResponses = [];
       home.hidden = true;
       homeLink.hidden = false;
       exam.hidden = false;
-      examForm.hidden = false;
       examTop.hidden = false;
       examPrompt.hidden = false;
       examOriginal.parentElement.hidden = false;
       examResults.hidden = true;
       loadExamQuestion();
     });
-    examForm.addEventListener("submit", event => {
-      event.preventDefault();
-      const round = examQuestions[examResponses.length];
-      const typed = examAnswer.value.trim().replace(/\s+/g, " ");
-      if (!typed || normalizeAnswer(typed) === normalizeAnswer(round.start)) {
-        examAnswer.focus();
+    function submitExamTiles() {
+      if (!answerIds.length) {
+        answerZone.classList.remove("wrong");
+        void answerZone.offsetWidth;
+        answerZone.classList.add("wrong");
         return;
       }
+      const round = examQuestions[examResponses.length];
+      const words = answerIds.map(id => tileById.get(id).text).join(" ");
+      const typed = `${round.start} ${words}${round.end || "."}`;
       examResponses.push({ typed, expected: expectedAnswer(round), original: round.original, prompt: examPrompt.textContent,
         section: round.section,
         model: { start: round.start, order: round.order, end: round.end },
@@ -1412,6 +1399,8 @@
         loadExamQuestion();
         return;
       }
+      examMode = false;
+      exercise.hidden = true;
       const result = { date: new Date().toISOString(), responses: examResponses };
       examHistory.unshift(result);
       let saved = true;
@@ -1421,14 +1410,14 @@
         saved = false;
       }
       showExamResult(result, saved ? "Saved in this browser." : "Browser storage is unavailable. This result is available until you close or refresh the page.");
-    });
+    }
 
     function showExamResult(result, message = "") {
       const responses = result.responses;
       home.hidden = true;
       homeLink.hidden = false;
       exam.hidden = false;
-      examForm.hidden = true;
+      exercise.hidden = true;
       examTop.hidden = true;
       const resultStats = document.getElementById("result-stats");
       renderTypeStats(resultStats, typeStats([result]));
@@ -1496,6 +1485,7 @@
     }
 
     function showHome(message = "") {
+      examMode = false;
       showLessonVideo(null);
       showDemo(null);
       home.hidden = false;
