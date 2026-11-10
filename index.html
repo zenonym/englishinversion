@@ -531,7 +531,7 @@
     const sections = [
       ["Negative and limiting starters", [1,2,3,4,5,6], [
         ["At no time","She never shared the password with anyone outside the team.","*did ^she ~share the password with anyone outside the team","~shared"],
-        ["On no account","Visitors must never enter the lab while the warning light is flashing.","*must ^Visitors ~enter the lab while the warning light is flashing"]        ,["Not once","He did not complain once during the long journey.","*did ^he ~complain during the long journey","~complained not"],
+        ["On no account","Visitors must never enter the lab while the warning light is flashing.","*must ^visitors ~enter the lab while the warning light is flashing"]        ,["Not once","He did not complain once during the long journey.","*did ^he ~complain during the long journey","~complained not"],
         ["Nowhere else","You will not find a better view anywhere else.","*will ^you ~find a better view","~found"],
         ["Rarely","My grandparents rarely watch television in the evening.","*do ^my ^grandparents ~watch television in the evening","*does ~watches"],
         ["Never before","I have never seen such a beautiful sunset before.","*have ^I ~seen such a beautiful sunset","*did"]
@@ -539,7 +539,7 @@
       ["Only at the front", [0,7,8,9], [
         ["Only later","They understood the instructions only later.","*did ^they ~understand the instructions","~understood"],
         ["Only yesterday","I heard the news only yesterday.","*did ^I ~hear the news","~heard"],
-        ["Only with permission","Students may leave the room only with permission.","*may ^Students ~leave the room"],
+        ["Only with permission","Students may leave the room only with permission.","*may ^students ~leave the room"],
         ["Only after the results had been checked","The researchers published their findings only after the results had been checked.","*did ^the ^researchers ~publish their findings","~published"]        ,["Only by working together","We can finish the project on time only by working together.","*can ^we ~finish the project on time"],
         ["Only when the rain stopped","The match restarted only when the rain stopped.","*did ^the ^match ~restart","~restarted"],
         ["Only in the evening","The café is quiet only in the evening.","*is ^the ^café quiet","*does"]
@@ -1057,7 +1057,13 @@
 
     function loadQuestion() {
       const round = questions[questionIndex];
-      const tokens = round.order.split(" ");
+      // Words that keep their place (no * ^ ~ mark) stay together as one tile.
+      const tokens = round.order.split(" ").reduce((list, token) => {
+        const plain = !/^[*~^]/.test(token);
+        if (plain && list.length && !/^[*~^]/.test(list[list.length - 1])) list[list.length - 1] += ` ${token}`;
+        else list.push(token);
+        return list;
+      }, []);
       const wordText = token => token.replace(/^[*~^]/, "").replace(/\./g, "");
       correctOrder = tokens.map(wordText);
       const extras = round.extra ? round.extra.split(" ") : [];
