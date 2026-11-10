@@ -1,0 +1,1578 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Matcha Inversion</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --matcha-900: #1f3a24;
+      --matcha-800: #2d5233;
+      --matcha-700: #3d6b40;
+      --matcha-600: #557f4a;
+      --matcha-400: #9bbb7c;
+      --matcha-200: #d6e5c3;
+      --matcha-100: #e9f1dd;
+      --foam: #f6f8ee;
+      --cream: #fdfbf4;
+      --ink: #26332a;
+      --muted: #5f6f5f;
+      --line: #d3dfc4;
+      --aux-bg: #fbecb0; --aux-line: #b8962c;
+      --verb-bg: #d7e8f5; --verb-line: #5a85a8;
+      --subj-bg: #f8dce6; --subj-line: #b56f8d;
+      --ok: #3b7d46; --ok-bg: #e5f3e3;
+      --bad: #b04a4f; --bad-bg: #fbecec;
+      --shadow-sm: 0 1px 2px #1f3a2414, 0 2px 6px #1f3a240d;
+      --shadow-md: 0 4px 14px #1f3a241a;
+      --shadow-lg: 0 18px 50px #1f3a241f;
+      --radius: 14px;
+      --ease: cubic-bezier(.2, .8, .2, 1);
+    }
+    * { box-sizing: border-box; }
+    [hidden] { display: none !important; }
+    html {
+      min-height: 100%;
+      background:
+        radial-gradient(1200px 600px at 10% -10%, #c9dcaf 0%, transparent 60%),
+        radial-gradient(900px 500px at 110% 110%, #efe6c8 0%, transparent 55%),
+        #eef3e2;
+      background-attachment: fixed;
+    }
+    body {
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 40px 16px 64px;
+      color: var(--ink);
+      font: 16px/1.55 "Nunito", system-ui, -apple-system, "Segoe UI", sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    p { margin: 10px 0; }
+    button { font: inherit; }
+    :focus-visible { outline: 3px solid var(--matcha-400); outline-offset: 2px; border-radius: 8px; }
+
+    main {
+      position: relative;
+      background: var(--cream);
+      border: 1px solid #e3ead6;
+      border-radius: 24px;
+      padding: clamp(20px, 5vw, 40px);
+      box-shadow: var(--shadow-lg);
+    }
+    main::before {
+      content: "";
+      position: absolute; inset: 0 0 auto 0; height: 6px;
+      border-radius: 24px 24px 0 0;
+      background: linear-gradient(90deg, var(--matcha-700), var(--matcha-400), #d9c98a);
+    }
+    h1 {
+      font-family: "Fraunces", Georgia, serif;
+      font-weight: 600;
+      font-size: clamp(1.6rem, 4.5vw, 2.1rem);
+      letter-spacing: -.01em;
+      color: var(--matcha-900);
+      margin: 0 0 4px;
+      display: flex; align-items: center; gap: 10px;
+    }
+    h1::before {
+      content: "🍵";
+      font-size: .85em;
+      display: inline-grid; place-items: center;
+      width: 1.6em; height: 1.6em;
+      background: var(--matcha-100);
+      border-radius: 50%;
+    }
+    #progress { color: var(--muted); font-size: .9rem; margin: 2px 0 22px; min-height: 1.4em; }
+    #progress:empty { margin: 0; min-height: 0; }
+
+    /* ---------- Buttons ---------- */
+    .check, #begin {
+      display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+      margin-top: 16px;
+      padding: 11px 22px;
+      border: 0; border-radius: 999px;
+      background: var(--matcha-700);
+      color: #fff; font-weight: 700; letter-spacing: .01em;
+      cursor: pointer;
+      box-shadow: 0 2px 0 var(--matcha-900), var(--shadow-sm);
+      transition: transform .15s var(--ease), background .15s, box-shadow .15s;
+    }
+    .check:hover, #begin:hover { background: var(--matcha-800); }
+    .check:active, #begin:active { transform: translateY(2px); box-shadow: 0 0 0 var(--matcha-900); }
+    #next { background: var(--ok); }
+    #home-link, .demo-controls button, .reference-demo-button {
+      background: var(--foam);
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: var(--matcha-800);
+      padding: 7px 14px;
+      font-size: .92rem; font-weight: 600;
+      cursor: pointer;
+      transition: background .15s, border-color .15s, transform .15s var(--ease);
+    }
+    #home-link:hover, .demo-controls button:hover, .reference-demo-button:hover {
+      background: var(--matcha-100); border-color: var(--matcha-400);
+    }
+    #home-link { position: absolute; top: 22px; right: 22px; }
+    #home-link::before { content: "← "; }
+
+    /* ---------- Home ---------- */
+    #home > p:first-child { color: var(--muted); margin-top: 0; }
+    .section-list { display: grid; gap: 10px; margin: 16px 0 6px; }
+    .section-list button {
+      display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: baseline;
+      gap: 8px 12px; text-align: left;
+      padding: 14px 16px;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      color: var(--matcha-900); font-weight: 700;
+      cursor: pointer;
+      box-shadow: var(--shadow-sm);
+      transition: transform .18s var(--ease), box-shadow .18s, border-color .18s;
+    }
+    .section-list button:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); border-color: var(--matcha-400); }
+    .section-list button:active { transform: translateY(0); }
+    .class-progress { display: block; font-size: .8rem; font-weight: 600; color: var(--muted); }
+    .section-list .class-progress { grid-column: 2; grid-row: 1; margin: 0; }
+    .class-progress-bar {
+      display: block; width: 100%; height: 6px; margin: 0;
+      appearance: none; border: 0; border-radius: 999px;
+      overflow: hidden; background: var(--matcha-100); color: var(--matcha-600);
+    }
+    .class-progress-bar::-webkit-progress-bar { background: var(--matcha-100); }
+    .class-progress-bar::-webkit-progress-value { background: linear-gradient(90deg, var(--matcha-600), var(--matcha-400)); border-radius: 999px; transition: width .4s var(--ease); }
+    .class-progress-bar::-moz-progress-bar { background: linear-gradient(90deg, var(--matcha-600), var(--matcha-400)); border-radius: 999px; }
+    .section-list .class-progress-bar { grid-column: 1 / -1; grid-row: 2; }
+    @media (max-width: 480px) {
+      .section-list button { grid-template-columns: 1fr; }
+      .section-list .class-progress { grid-column: 1; grid-row: 2; }
+      .section-list .class-progress-bar { grid-row: 3; }
+      #home-link { position: static; margin-bottom: 12px; }
+    }
+
+    .exam-entry {
+      margin: 26px 0 0; padding: 18px 20px;
+      background: linear-gradient(135deg, var(--matcha-800), var(--matcha-600));
+      color: #eef5e4;
+      border-radius: 18px;
+      box-shadow: var(--shadow-md);
+    }
+    .exam-entry p { margin: 8px 0 0; font-size: .92rem; }
+    .exam-entry .check { margin-top: 0; background: var(--cream); color: var(--matcha-900); box-shadow: 0 2px 0 #00000033; }
+    .exam-entry .check:hover { background: #fff; }
+    .exam-entry details { margin-top: 12px; }
+    .exam-entry summary { cursor: pointer; font-weight: 700; font-size: .9rem; }
+    #exam-history-list { list-style: none; padding: 0; margin: 10px 0 0; display: grid; gap: 6px; }
+    #exam-history-list .reference-demo-button { margin: 0; }
+
+    .home-reference { display: grid; gap: 10px; margin-top: 22px; }
+    .home-reference details {
+      background: #fff; border: 1px solid var(--line); border-radius: var(--radius);
+      padding: 4px 16px; box-shadow: var(--shadow-sm);
+    }
+    .home-reference details[open] { padding-bottom: 14px; }
+    .home-reference summary {
+      list-style: none; cursor: pointer;
+      padding: 10px 0; font-weight: 700; color: var(--matcha-900);
+      display: flex; align-items: center; gap: 10px;
+    }
+    .home-reference summary::-webkit-details-marker { display: none; }
+    .home-reference summary::before {
+      content: ""; width: 12px; height: 12px; border-radius: 4px; flex: none;
+    }
+    .home-reference summary.aux::before { background: var(--aux-bg); border: 1px solid var(--aux-line); }
+    .home-reference summary.verb::before { background: var(--verb-bg); border: 1px solid var(--verb-line); }
+    .home-reference summary.aux, .home-reference summary.verb { background: none; }
+    .home-reference summary::after { content: "›"; margin-left: auto; font-size: 1.3rem; transition: transform .2s var(--ease); color: var(--muted); }
+    .home-reference details[open] summary::after { transform: rotate(90deg); }
+    .reference-table { width: 100%; border-collapse: separate; border-spacing: 0; margin: 10px 0; font-size: .92rem; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+    .reference-table th, .reference-table td { padding: 9px 10px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+    .reference-table tr:last-child > * { border-bottom: 0; }
+    .reference-table thead th { background: var(--matcha-100); color: var(--matcha-900); font-size: .82rem; text-transform: uppercase; letter-spacing: .04em; }
+    .reference-table tbody th { font-weight: 700; width: 38%; }
+    .reference-demo-button { display: block; margin-top: 8px; }
+    .reference-example td { background: var(--foam); }
+    .reference-example .demo-row { min-height: 2rem; }
+    .reference-example .demo-label { margin-top: 8px; }
+
+    /* ---------- Lesson ---------- */
+    #lesson {
+      padding: 20px; border: 1px solid var(--line); border-radius: 18px;
+      background: linear-gradient(180deg, var(--matcha-100), var(--foam));
+      animation: rise .35s var(--ease) both;
+    }
+    #lesson-title { font-family: "Fraunces", Georgia, serif; font-size: 1.3rem; color: var(--matcha-900); }
+    #lesson-demo { margin: 16px 0; padding: 16px; background: #fff; border-radius: var(--radius); border: 1px solid var(--line); }
+    .demo-label { margin: 10px 0 6px; font-size: .75rem; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+    .demo-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+    #demo-comparison, .reference-comparison { position: relative; }
+    #demo-comparison .demo-label:not(:first-child), .reference-comparison .demo-label:not(:first-child) {
+      margin-top: 36px; position: relative; z-index: 1; width: fit-content; background: #fff; padding-right: 6px;
+    }
+    .reference-comparison .demo-label:not(:first-child) { background: var(--foam); }
+    #demo-arrows, .reference-arrows { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+    .demo-word { position: relative; z-index: 1; padding: 4px 9px; border-radius: 8px; border: 1px solid transparent; }
+    .trigger { background: var(--matcha-200); border-color: var(--matcha-400); }
+    .demo-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 14px; }
+    #demo-count { color: var(--muted); font-size: .85rem; }
+    @media (max-width: 520px) {
+      .demo-row { gap: 4px; font-size: .9rem; }
+      .demo-row .demo-word { padding: 3px 5px; }
+      #demo-comparison .demo-label:not(:first-child) { margin-top: 44px; }
+    }
+    .zh-note { color: #4a5f4c; margin-top: 4px; line-height: 1.7; font-size: .95rem; }
+    .lesson-video { margin: 16px 0; }
+    .lesson-video summary { cursor: pointer; color: var(--matcha-700); font-weight: 700; }
+    .lesson-video #video-player { margin-top: 8px; }
+    .lesson-video iframe { display: block; width: 100%; aspect-ratio: 16 / 9; border: 0; border-radius: 12px; background: var(--matcha-100); }
+    .lesson-video a { display: inline-block; margin-top: 6px; color: var(--matcha-700); }
+
+    /* ---------- Exercise ---------- */
+    #exercise, #exam { animation: rise .35s var(--ease) both; }
+    @keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+    .question-title { font-family: "Fraunces", Georgia, serif; font-weight: 600; font-size: 1.3rem; line-height: 1.35; margin: 0 0 14px; color: var(--matcha-900); }
+    .original {
+      display: grid; gap: 4px;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-left: 5px solid var(--matcha-600);
+      border-radius: 12px;
+      padding: 14px 18px;
+      box-shadow: var(--shadow-sm);
+    }
+    .original strong { font-size: .75rem; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+    #original, #exam-original { font-size: 1.15rem; }
+    .build-area { margin-top: 18px; border: 1px solid var(--line); border-radius: 18px; padding: clamp(14px, 3vw, 22px); background: var(--foam); }
+    .build-heading { font-weight: 800; margin: 0; color: var(--matcha-900); }
+    .build-hint { color: var(--muted); font-size: .88rem; margin: 3px 0 0; }
+    .word-row, .answer-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+    .build-area .word-row { margin: 10px 0 18px; }
+    #word-bank { min-height: 46px; }
+    .tile {
+      border: 1px solid #c8d4bb;
+      border-bottom-width: 3px;
+      border-radius: 10px;
+      background: #fff;
+      color: var(--ink);
+      padding: 7px 12px;
+      font-weight: 600;
+      cursor: grab;
+      touch-action: none;
+      user-select: none;
+      transition: transform .14s var(--ease), box-shadow .14s, background .14s;
+      animation: pop .22s var(--ease) both;
+    }
+    @keyframes pop { from { transform: scale(.85); opacity: 0; } to { transform: none; opacity: 1; } }
+    .tile:hover:not(:disabled) { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+    .tile:active { cursor: grabbing; transform: translateY(1px); }
+    .tile:disabled { opacity: 1; cursor: default; }
+    .tile.drag-source { opacity: .3; }
+    .drag-ghost { position: fixed; z-index: 10; pointer-events: none; transform: rotate(-3deg) scale(1.06); box-shadow: 0 12px 24px #1f3a2440; animation: none; }
+    .answer-heading { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 4px 12px; margin: 0 0 6px; }
+    .answer-heading strong { color: var(--matcha-900); }
+    #remaining { color: var(--muted); font-size: .85rem; font-weight: 600; }
+    .answer-zone {
+      min-height: 64px;
+      background: #fff;
+      border: 2px dashed var(--matcha-400);
+      border-radius: 14px;
+      padding: 12px;
+      transition: background .2s, border-color .2s, outline-color .2s;
+    }
+    .answer-zone.drop-ready { background: var(--matcha-100); border-color: var(--matcha-600); outline: 3px solid #9bbb7c66; outline-offset: 2px; }
+    .answer-zone.correct { background: var(--ok-bg); border: 2px solid var(--ok); animation: glow .6s var(--ease); }
+    .answer-zone.wrong { animation: shake .4s; border-color: var(--bad); }
+    @keyframes glow { 0% { box-shadow: 0 0 0 0 #3b7d4666; } 100% { box-shadow: 0 0 0 14px #3b7d4600; } }
+    @keyframes shake { 0%,100% { transform: none; } 20%,60% { transform: translateX(-6px); } 40%,80% { transform: translateX(6px); } }
+    .starter { font-weight: 800; color: var(--matcha-800); padding: 7px 4px; }
+    #ending { color: var(--muted); }
+    .answer-slot { width: 2.4rem; height: 2.1rem; border: 2px dashed #c6d6b4; border-radius: 10px; }
+    #answer-words:empty, #ending:empty { display: none; }
+    .tile-legend { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0 0; font-size: .8rem; color: var(--muted); }
+    #feedback { min-height: 1.5em; margin-top: 14px; padding: 12px 14px; border-radius: 12px; animation: rise .25s var(--ease) both; }
+    #feedback.ok { background: var(--ok-bg); color: #24542d; border: 1px solid #b9dcb9; }
+    #feedback.bad { background: var(--bad-bg); color: #7c2f33; border: 1px solid #efc4c6; }
+    #feedback:empty { display: none; }
+
+    mark { border-radius: 6px; padding: 2px 7px; color: inherit; border: 1px solid transparent; }
+    .aux { background: var(--aux-bg); border-color: var(--aux-line); }
+    .verb { background: var(--verb-bg); border-color: var(--verb-line); }
+    .subject { background: var(--subj-bg); border-color: var(--subj-line); }
+    .tile.aux, .tile.verb, .tile.subject { border-bottom-width: 3px; }
+
+    /* ---------- Exam ---------- */
+    #exam-form label { display: block; margin-top: 14px; font-weight: 700; font-size: .9rem; color: var(--matcha-900); }
+    #exam-form textarea {
+      display: block; width: 100%; padding: 12px 14px; margin-top: 6px;
+      border: 1px solid var(--line); border-radius: 12px; background: #fff;
+      font: inherit; resize: vertical;
+      transition: border-color .15s, box-shadow .15s;
+    }
+    #exam-form textarea:focus { outline: none; border-color: var(--matcha-600); box-shadow: 0 0 0 4px #9bbb7c40; }
+    .exam-given { display: inline-block; padding: 5px 12px; border-radius: 999px; background: var(--matcha-200); color: var(--matcha-900); font-weight: 800; }
+    .exam-top { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
+    .exam-top progress { flex: 1; height: 8px; appearance: none; border: 0; border-radius: 999px; overflow: hidden; background: var(--matcha-100); }
+    .exam-top progress::-webkit-progress-bar { background: var(--matcha-100); }
+    .exam-top progress::-webkit-progress-value { background: linear-gradient(90deg, var(--matcha-600), var(--matcha-400)); border-radius: 999px; transition: width .3s var(--ease); }
+    .exam-top progress::-moz-progress-bar { background: var(--matcha-600); border-radius: 999px; }
+    .exam-count { font-size: .85rem; font-weight: 800; color: var(--muted); white-space: nowrap; }
+    #exam-answer { font-size: 1.1rem; }
+    .exam-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; }
+    .exam-actions .build-hint { margin: 16px 0 0; }
+    .type-stats { list-style: none; padding: 0; margin: 12px 0 0; display: grid; gap: 10px; }
+    .type-stats li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 10px; font-size: .9rem; }
+    .type-stats .bar { grid-column: 1 / -1; height: 7px; border-radius: 999px; background: #ffffff33; overflow: hidden; }
+    .type-stats .bar span { display: block; height: 100%; border-radius: 999px; }
+    .type-stats .pct { font-weight: 800; }
+    .type-stats .weak .name::after { content: " · needs practice"; font-weight: 700; color: #f6c9a0; }
+    #exam-results .type-stats .bar { background: var(--matcha-100); }
+    #exam-results .type-stats .weak .name::after { color: var(--bad); }
+    .type-stats-box { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 14px 18px; margin: 14px 0 18px; }
+    .stats-title { margin: 0; font-size: .8rem; text-transform: uppercase; letter-spacing: .06em; }
+    .exam-entry .stats-box { margin-top: 16px; padding-top: 14px; border-top: 1px solid #ffffff2e; }
+    .exam-entry .stats-note { font-size: .8rem; opacity: .8; }
+    .backup { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 16px; padding-top: 14px; border-top: 1px solid #ffffff2e; }
+    .backup .reference-demo-button { margin: 0; display: inline-block; }
+    .backup p { flex-basis: 100%; margin: 0; }
+    #exam-score { font-family: "Fraunces", Georgia, serif; font-size: 2rem; color: var(--matcha-900); margin: 0; }
+    #exam-review { list-style: none; padding: 0; display: grid; gap: 12px; }
+    #exam-review li { border: 1px solid; border-left-width: 5px; border-radius: 14px; padding: 14px 18px; overflow-wrap: anywhere; background: #fff; }
+    #exam-review .review-correct { border-color: var(--ok); }
+    #exam-review .review-incorrect { border-color: var(--bad); }
+    #exam-review h3 { margin: 0 0 10px; font-size: 1rem; }
+    #exam-review .review-correct h3 { color: var(--ok); }
+    #exam-review .review-incorrect h3 { color: var(--bad); }
+    #exam-review p { margin: 8px 0 0; }
+    #exam-review strong { display: block; font-size: .75rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+    .review-answer { padding: 8px 10px; border-radius: 8px; background: var(--foam); }
+    .review-difference { background: #f6c9cc; border-color: var(--bad); }
+    @media (prefers-reduced-motion: no-preference) {
+      #exam-review li { animation: rise .32s var(--ease) both; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation: none !important; transition: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <button id="home-link" type="button" hidden>Home</button>
+    <h1>Build the inversion</h1>
+    <section id="home">
+      <p>Choose an inversion type to practise. Brew one section at a time.</p>
+      <div class="section-list" id="section-list"></div>
+      <p class="build-hint">Correct answers save automatically in this browser. Pick a class to resume.</p>
+      <div class="exam-entry">
+        <button class="check" id="start-exam" type="button">Start exam</button>
+        <p>20 mixed questions from every inversion type. Each result is saved so you can see which types need more practice.</p>
+        <div class="stats-box" id="home-stats" hidden>
+          <h3 class="stats-title">Your accuracy by type</h3>
+          <ul class="type-stats" id="home-stats-list"></ul>
+          <p class="stats-note" id="home-stats-note"></p>
+        </div>
+        <details id="exam-history" hidden>
+          <summary>Saved exam results</summary>
+          <ul id="exam-history-list"></ul>
+        </details>
+        <div class="backup">
+          <button type="button" class="reference-demo-button" id="download-results">Download my results</button>
+          <label class="reference-demo-button" for="load-results">Load results file</label>
+          <input type="file" id="load-results" accept=".json,application/json" hidden>
+          <p class="stats-note" id="backup-note">Results save in this browser automatically. Download a copy to keep them safe or move them to another device.</p>
+        </div>
+      </div>
+      <div class="home-reference">
+        <details>
+          <summary class="aux">Auxiliary verbs</summary>
+          <p>Look for an auxiliary before the main verb. In most inversion questions, move the first auxiliary before the subject.</p>
+          <p class="zh-note" lang="zh-HK">先搵 main verb 前面嘅 auxiliary。通常倒裝嗰陣，將第一個 auxiliary 搬到 subject 前面。</p>
+          <table class="reference-table" aria-label="Auxiliary verb forms">
+            <thead><tr><th scope="col">Group</th><th scope="col">Forms</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">Be</th><td>am, is, are, was, were, be, been, being</td></tr>
+              <tr><th scope="row">Have</th><td>have, has, had</td></tr>
+              <tr><th scope="row">Do</th><td>do, does, did</td></tr>
+              <tr><th scope="row">Modals</th><td>can, could, may, might, must, shall, should, will, would</td></tr>
+            </tbody>
+          </table>
+          <p>If a simple present or past sentence has no auxiliary, add <strong>do, does, or did</strong> and use the base form of the main verb. When <strong>be</strong> is the main verb, it can move by itself.</p>
+          <p class="zh-note" lang="zh-HK">如果係 simple present 或 simple past 而冇 auxiliary，就加 do、does 或 did，再用 main verb 嘅 base form。如果 main verb 係 be，就可以直接搬 be。</p>
+        </details>
+        <details>
+          <summary class="verb">Starting words and phrases</summary>
+          <p>Use the starter to decide which pattern to try.</p>
+          <p class="zh-note" lang="zh-HK">睇吓句首用咗邊組字眼，就知應該用邊個 pattern。</p>
+          <table class="reference-table" aria-label="Starting words and their inversion patterns">
+            <thead><tr><th scope="col">Starter</th><th scope="col">Word order</th></tr></thead>
+            <tbody>
+              <tr data-example="0"><th scope="row">Never, Rarely, Seldom, Little, Not until, Under no circumstances</th><td>Starter → auxiliary → subject → main verb. Add do, does, or did if needed.</td></tr>
+              <tr data-example="1"><th scope="row">Only then, Only after, Only when, Only by</th><td>Move the whole Only phrase to the front, then put the auxiliary before the subject in the main clause.</td></tr>
+              <tr data-example="2"><th scope="row">Not only … but also, Hardly or Scarcely … when, No sooner … than</th><td>Put the auxiliary before the subject in the first clause. Keep the second clause in its usual order.</td></tr>
+              <tr data-example="3"><th scope="row">Neither, Nor</th><td>Starter → auxiliary → subject. The main verb is understood.</td></tr>
+              <tr data-example="4"><th scope="row">Had, Were, Should</th><td>Drop <em>if</em> and move Had, Were, or Should before the subject.</td></tr>
+              <tr data-example="5"><th scope="row">Often, Twice, Many a time</th><td>For optional formal inversion, move the starter to the front, then put the auxiliary before the subject.</td></tr>
+              <tr data-example="6"><th scope="row">Here, There</th><td>Starter → main verb → noun subject. A pronoun stays before the main verb.</td></tr>
+            </tbody>
+          </table>
+        </details>
+      </div>
+    </section>
+    <p id="progress" aria-live="polite"></p>
+    <section id="exam" hidden>
+      <div class="exam-top" id="exam-top"><progress id="exam-bar" max="20" value="0"></progress><span class="exam-count" id="exam-count"></span></div>
+      <h2 class="question-title" id="exam-prompt"></h2>
+      <p class="original"><strong>Original sentence</strong> <span id="exam-original"></span></p>
+      <form id="exam-form">
+        <label for="exam-answer">Your sentence</label>
+        <textarea id="exam-answer" rows="2" required autocomplete="off" autocapitalize="off" spellcheck="false"></textarea>
+        <div class="exam-actions">
+          <button class="check" type="submit">Submit</button>
+          <p class="build-hint">Press Enter to submit. Capitals and punctuation don’t matter.</p>
+        </div>
+      </form>
+      <div id="exam-results" hidden>
+        <h2 id="exam-score" tabindex="-1"></h2>
+        <div class="type-stats-box"><h3 class="stats-title">This exam by type</h3><ul class="type-stats" id="result-stats"></ul></div>
+        <p></p>
+        <ol id="exam-review"></ol>
+      </div>
+    </section>
+    <section id="lesson" hidden>
+      <strong id="lesson-title"></strong>
+      <p id="lesson-text"></p>
+      <p id="lesson-chinese" class="zh-note" lang="zh-HK"></p>
+      <div id="lesson-demo" hidden>
+        <p id="demo-note"></p>
+        <p id="demo-chinese" class="zh-note" lang="zh-HK"></p>
+        <div id="demo-comparison">
+        <p class="demo-label">Before inversion</p>
+        <div class="demo-row" id="demo-before"></div>
+        <p class="demo-label">After inversion</p>
+        <div class="demo-row" id="demo-after"></div>
+        <svg id="demo-arrows" aria-hidden="true"></svg>
+        </div>
+        <div class="demo-controls">
+          <button id="replay-demo" type="button">Replay animation</button>
+          <button id="another-demo" type="button">Show another example</button>
+          <span id="demo-count" aria-live="polite"></span>
+        </div>
+      </div>
+      <details id="lesson-video" class="lesson-video" hidden>
+        <summary>Show video explanation</summary>
+        <div id="video-player"></div>
+        <a id="video-link" target="_blank" rel="noopener noreferrer">Open this clip on YouTube</a>
+      </details>
+      <button id="begin" type="button">Try this question</button>
+    </section>
+    <section id="exercise">
+    <h2 class="question-title" id="instruction"></h2>
+    <p class="original"><strong>Original sentence</strong> <span id="original"></span></p>
+    <div class="build-area">
+    <p class="build-heading">Word bank</p>
+    <p class="build-hint">Drag or tap words to fill the slots below. Leave extra words here.</p>
+    <div id="word-bank" class="word-row" data-zone="bank" aria-label="Word tiles"></div>
+
+    <p class="answer-heading"><strong>Your answer</strong> <span id="remaining"></span></p>
+    <div class="answer-zone" data-zone="answer" aria-label="Answer area">
+      <div class="answer-row">
+        <span id="starter" class="starter"></span>
+        <div id="answer-words" class="answer-row" aria-label="Answer words"></div>
+        <span id="ending"></span>
+      </div>
+    </div>
+    <p class="tile-legend"><mark class="aux">Auxiliary</mark><mark class="verb">Main verb</mark><mark class="subject">Subject</mark></p>
+
+    <button id="check" class="check" type="button">Check</button>
+    <button id="next" class="check" type="button" hidden>Next question</button>
+    <p id="feedback" aria-live="polite"></p>
+    </div>
+    </section>
+  </main>
+
+  <script>
+    const bank = document.getElementById("word-bank");
+    const answerZone = document.querySelector('[data-zone="answer"]');
+    const answerWords = document.getElementById("answer-words");
+    const feedback = document.getElementById("feedback");
+    const check = document.getElementById("check");
+
+    // * marks an auxiliary and ~ marks a main verb.
+    const base = [
+      { start: "Only then", original: "She noticed the mistake only then.", order: "*did ^she ~notice the mistake.", extra: "~noticed *does", tip: "Use did for the past. After did, use notice." },
+      { start: "Never", original: "I have never seen snow.", order: "*have ^I ~seen snow.", tip: "Move the existing auxiliary have before I." },
+      { start: "Rarely", original: "She rarely eats out.", order: "*does ^she ~eat out.", extra: "~eats *do", tip: "Use does with she in the present. After does, use eat." },
+      { start: "Seldom", original: "We seldom order dessert.", order: "*do ^we ~order dessert.", extra: "*does *did", tip: "Use do with we in the present." },
+      { start: "Little", original: "He had no idea that the door was locked.", order: "*did ^he ~know that the door was locked.", extra: "~knew",
+        lesson: ["Little as a negative starter", "Little can mean ‘hardly’ or ‘not at all’. In that sense it triggers inversion. Example: Little did I realise how late it was."], tip: "Little did he know means he had no idea." },
+      { start: "Under no circumstances", original: "You must not open this door under any circumstances.", order: "*must ^you ~open this door.", extra: "not", tip: "The starter already carries the negative meaning. Move must before you." },
+      { start: "Not until noon", original: "The shop did not open until noon.", order: "*did ^the ^shop ~open.", extra: "not ~opened", tip: "Not until noon carries the negative meaning. Use did + open." },
+      { start: "Only after lunch", original: "They left only after lunch.", order: "*did ^they ~leave.", extra: "~left", tip: "Invert the main clause after Only after lunch." },
+      { start: "Only by practising", original: "We can improve only by practising.", order: "*can ^we ~improve.", tip: "Move can before we." },
+      { start: "Only when I called", original: "She answered only when I called.", order: "*did ^she ~answer.", extra: "~answered", tip: "Keep I called in normal order. Invert the main clause." },
+      { start: "Not only", original: "He lost his keys and also missed the bus.", order: "*did ^he ~lose his keys", end: ", but he also missed the bus.", extra: "~lost", tip: "Invert the first clause. The but clause keeps normal order." },
+      { start: "Hardly", original: "I had just sat down when the bell rang.", order: "*had ^I ~sat down", end: " when the bell rang.", lesson: ["Hardly … when", "Use this pair for two events that happen almost immediately one after the other. Invert the first clause and keep the when clause in normal order."], tip: "Hardly pairs with when." },
+      { start: "No sooner", original: "As soon as they had left, it started raining.", order: "*had ^they ~left", end: " than it started raining.", lesson: ["No sooner … than", "Move had before the subject in the first clause. Use than to introduce the event that happened next."], tip: "No sooner pairs with than." },
+      { start: "Neither", original: "Mia cannot swim. Ben cannot swim either.", order: "*can ^Ben.", extra: "*does not",
+        lesson: ["Negative agreement with Neither", "Use Neither + auxiliary + subject to say someone else is in the same situation. Match the auxiliary to the first sentence. Example: ‘I am not ready.’ ‘Neither am I.’"], tip: "Use can from cannot. Neither already makes the reply negative." },
+      { start: "Nor", original: "I did not hear the alarm. Leo did not hear it either.", order: "*did ^Leo.", extra: "*does not",
+        lesson: ["Negative agreement with Nor", "Nor works like Neither in this pattern. The main verb is understood, so the reply can stop after the subject. Example: ‘I have not called.’ ‘Nor have I.’"], tip: "Use did because the first statement is in the past." },
+      { start: "Had", original: "If you had been there, you would have seen it.", order: "^you ~been there", end: ", you would have seen it.", extra: "if *did",
+        lesson: ["Conditional inversion with Had", "Drop if and move had before the subject: ‘If I had known’ becomes ‘Had I known’. ‘You had been there’ is ordinary statement order. ‘Had you been there, …’ introduces a condition."], tip: "Had moves before you. Been stays after you." },
+      { start: "Were", original: "If she were here, she could help.", order: "^she here", end: ", she could help.", extra: "if *did",
+        lesson: ["Conditional inversion with Were", "In a formal hypothetical condition, drop if and move were before the subject. Example: ‘If I were you’ becomes ‘Were I you’."], tip: "Were goes first. There is no need to add did." },
+      { start: "Should", original: "If you should need help, call me.", order: "^you ~need help", end: ", call me.", extra: "if *do",
+        lesson: ["Conditional inversion with Should", "In a formal condition, drop if and move should before the subject. Example: ‘If it should rain’ becomes ‘Should it rain’."], tip: "Should goes before you. Need stays in its base form." },
+      { start: "Often", original: "I have often wondered why.", order: "*have ^I ~wondered why.",
+        lesson: ["Optional inversion with Often", "Ordinary word order is fine with often. This round asks you to practise the formal or literary inverted version."], tip: "For the inverted version, move have before I." }
+    ];
+    const sections = [
+      ["Negative and limiting starters", [1,2,3,4,5,6], [
+        ["At no time","She never shared the password with anyone outside the team.","*did ^she ~share the password with anyone outside the team","~shared"],
+        ["On no account","Visitors must never enter the lab while the warning light is flashing.","*must ^Visitors ~enter the lab while the warning light is flashing"]        ,["Not once","He did not complain once during the long journey.","*did ^he ~complain during the long journey","~complained not"],
+        ["Nowhere else","You will not find a better view anywhere else.","*will ^you ~find a better view","~found"],
+        ["Rarely","My grandparents rarely watch television in the evening.","*do ^my ^grandparents ~watch television in the evening","*does ~watches"],
+        ["Never before","I have never seen such a beautiful sunset before.","*have ^I ~seen such a beautiful sunset","*did"]
+      ], "Move the auxiliary before the subject. Add do, does or did if the simple tense has no auxiliary."],
+      ["Only at the front", [0,7,8,9], [
+        ["Only later","They understood the instructions only later.","*did ^they ~understand the instructions","~understood"],
+        ["Only yesterday","I heard the news only yesterday.","*did ^I ~hear the news","~heard"],
+        ["Only with permission","Students may leave the room only with permission.","*may ^Students ~leave the room"],
+        ["Only after the results had been checked","The researchers published their findings only after the results had been checked.","*did ^the ^researchers ~publish their findings","~published"]        ,["Only by working together","We can finish the project on time only by working together.","*can ^we ~finish the project on time"],
+        ["Only when the rain stopped","The match restarted only when the rain stopped.","*did ^the ^match ~restart","~restarted"],
+        ["Only in the evening","The café is quiet only in the evening.","*is ^the ^café quiet","*does"]
+      ], "Keep the words inside the Only phrase in their usual order. Invert the main clause that follows."],
+      ["Paired starters", [10,11,12], [
+        ["Not only","She fixed the lamp and also cleaned the desk.","*did ^she ~fix the lamp","~fixed",", but she also cleaned the desk."],
+        ["Hardly","We had just started dinner when the lights went out.","*had ^we ~started dinner",""," when the lights went out."],
+        ["No sooner","As soon as I had sent the email, my phone rang.","*had ^I ~sent the email",""," than my phone rang."],
+        ["Scarcely","The guests had barely settled into their seats when the fire alarm sounded.","*had ^the ^guests ~settled into their seats",""," when the fire alarm sounded."],
+        ["Not only","The delay cost the team several hours and also forced them to cancel the rehearsal.","*did ^the ^delay ~cost the team several hours","*does",", but it also forced them to cancel the rehearsal."]        ,["No sooner","As soon as she had closed the door, the phone rang.","*had ^she ~closed the door","*did"," than the phone rang."],
+        ["Hardly","The film had hardly begun when the power failed.","*had ^the ^film ~begun","*did"," when the power failed."],
+        ["Not only","He speaks French and also teaches it.","*does ^he ~speak French","~speaks",", but he also teaches it."]
+      ], "Invert the first clause. Use but also with Not only, when with Hardly or Scarcely, and than with No sooner."],
+      ["Neither and Nor", [13,14], [
+        ["Neither","Mia is not ready. I am not ready either.","*am ^I","*is"],
+        ["Nor","Sam does not drive. His sister does not drive either.","*does ^his ^sister","*do"],
+        ["Neither","I do not eat meat. My cousins do not eat it either.","*do ^my ^cousins","*does"],
+        ["Nor","The first printer was not working. The second printer was not working either.","*was ^the ^second ^printer","*did"],
+        ["Neither","The manager has not received a reply. The two assistants have not received one either.","*have ^the ^two ^assistants","*has"],
+        ["Nor","The Monday group could not finish the exercise in time. The students in the Tuesday group could not finish it in time either.","*could ^the ^students ^in ^the ^Tuesday ^group","*did"]        ,["Neither","Tom will not come to the party. Anna will not come either.","*will ^Anna","*does"],
+        ["Nor","My brother has never been to Japan. I have never been there either.","*have ^I","*has"]
+      ], "Replace the second statement with a short reply. Put the auxiliary before its subject and make it agree with that subject. The main verb is understood."],
+      ["Conditionals without if", [15,16,17], [
+        ["Had","If I had known, I would have called.","^I ~known","if",", I would have called."],
+        ["Were","If he were taller, he could reach it.","^he taller","if",", he could reach it."],
+        ["Should","If the lights should go out, use the torch.","^the ^lights ~go out","if",", use the torch."],
+        ["Were","If the train were to arrive early, we could catch it.","^the ^train to ~arrive early","if",", we could catch it."],
+        ["Had","If the team had checked the figures before the meeting, they could have spotted the error.","^the ^team ~checked the figures before the meeting","if *did",", they could have spotted the error."]        ,["Should","If anyone should ask, tell them I am busy.","^anyone ~ask","if *does",", tell them I am busy."],
+        ["Had","If we had left earlier, we would have caught the train.","^we ~left earlier","if *did",", we would have caught the train."],
+        ["Were","If I were you, I would apologise.","^I you","if *was",", I would apologise."]
+      ], "Drop if and start with Had, Were or Should. Keep the result clause in its original order."],
+      ["Formal frequency starters", [18], [
+        ["Often","I have often wondered about that.","*have ^I ~wondered about that"],
+        ["Twice","She has been warned twice.","*has ^she *been ~warned"],
+        ["Many a time","We have asked ourselves the same question many times.","*have ^we ~asked ourselves the same question"],
+        ["Often","They have often talked about moving abroad.","*have ^they ~talked about moving abroad"],
+        ["Twice","The organisers had checked the equipment twice before the show began.","*had ^the ^organisers ~checked the equipment before the show began"],
+        ["Often","The old clock has often reminded me of the house where I grew up.","*has ^the ^old ^clock ~reminded me of the house where I grew up"],
+        ["Many a time","The volunteers have stayed late many times to make sure everyone got home safely.","*have ^the ^volunteers ~stayed late to make sure everyone got home safely"]        ,["Twice","I have visited that museum twice.","*have ^I ~visited that museum","*did"]
+      ], "These starters can use inversion for formal or literary emphasis. In this section, practise the inverted version."],
+      ["Here and There", [], [
+        ["Here","The bus is coming.","~comes ^the ^bus"],
+        ["There","The train is going.","~goes ^the ^train"],
+        ["Here","It is coming.","^it ~comes"],
+        ["There","She is going.","^she ~goes"],
+        ["Here","Our new neighbours are coming.","~come ^our ^new ^neighbours","~comes"],
+        ["There","The last boat to the island is going.","~goes ^the ^last ^boat ^to ^the ^island","~go"],
+        ["Here","They are coming at last.","^they ~come at last","~comes"],
+        ["There","The runners from the local club are going.","~go ^the ^runners ^from ^the ^local ^club","~goes"]        ,["Here","Your taxi is coming.","~comes ^your ^taxi","~come"],
+        ["There","He is going.","^he ~goes","~go"]
+      ], "For an announcement, put the main verb before a noun subject, as in Here comes the bus. With a pronoun, keep the subject first, as in Here it comes."]
+    ];
+    const demos = [
+      ["Move the {starter} to the front. Put the {auxiliary} before the {subject}. The {main verb} stays after the subject.",
+        "^I|*have|+never|~seen|snow.", "+Never|*have|^I|~seen|snow."],
+      ["Move the {starter} to the front. This past tense sentence needs {did} before the {subject}. Change the {main verb} from noticed to notice.",
+        "^She|~noticed|the mistake|+only then.", "+Only then|*did|^she|~notice|the mistake."],
+      ["Put the {auxiliary} before the {subject} in the first clause. The clause after when keeps its usual order.",
+        "^I|*had|+hardly|~sat down|when the bell rang.", "+Hardly|*had|^I|~sat down|when the bell rang."],
+      ["Use {Neither} or {Nor} to agree with a negative statement. Move the {auxiliary} before the {subject}. The {main verb} is understood and drops out.",
+        "^I|*cannot|~swim|+either.", "+Neither|*can|^I."],
+      ["Remove {if} and move {had}, {were}, or {should} before the {subject}. Keep the result clause in its usual order.",
+        "+If|^you|*had|~known,|you would have called.", "*Had|^you|~known,|you would have called."],
+      ["For a formal or literary effect, move the {starter} to the front and put the {auxiliary} before the {subject}. The original order is also fine.",
+        "^I|*have|+often|~wondered|why.", "+Often|*have|^I|~wondered|why."],
+      ["In a Here or There announcement, put the {main verb} before a noun {subject}. With a pronoun, keep the subject first, as in Here it comes.",
+        "^The bus|~comes.", "+Here|~comes|^the bus."]
+    ];
+    const alternateDemos = [
+      ["Put the {starter} first. Add {does} before the {subject} and use the base {main verb}.",
+        "^Mia|+rarely|~eats|out.", "+Rarely|*does|^Mia|~eat|out."],
+      ["Move the entire {starter} to the front. Then move the {auxiliary} before the {subject}.",
+        "^We|*can|~leave|+only after lunch.", "+Only after lunch|*can|^we|~leave."],
+      ["Use {No sooner} with than. Move the {auxiliary} before the {subject} in the first clause.",
+        "^We|*had|+no sooner|~arrived|than it started raining.", "+No sooner|*had|^we|~arrived|than it started raining."],
+      ["After ‘Mia has not called’, use {Nor} to say Ben has not called either. Keep the {auxiliary} and {subject} in the short reply.",
+        "^Ben|*has|not|~called|either.", "+Nor|*has|^Ben."],
+      ["Drop {if} and move {should} before the {subject}. The instruction after the comma stays in place.",
+        "+If|^you|*should|~need|help,|call me.", "*Should|^you|~need|help,|call me."],
+      ["Move the frequency {starter} to the front for emphasis. The first {auxiliary} goes before the {subject}.",
+        "^She|*has|*been|~warned|+twice.", "+Twice|*has|^she|*been|~warned."],
+      ["With a pronoun {subject}, the {main verb} stays after it in a Here or There announcement.",
+        "^It|~goes.", "+There|^it|~goes."]
+    ];
+    const chineseRules = [
+      "將帶有否定或者限制意思嘅字眼放喺句首，再將 {auxiliary} 放喺 {subject} 前面。如果原句冇 auxiliary，就按時態同 subject 加 do、does 或 did。",
+      "將 Only 開頭嘅成組字眼搬到句首。Only 嗰部分保持原本次序，後面嘅 main clause 先倒裝。",
+      "第一個 clause 要倒裝，後面嗰個保持原本次序。Not only 配 but also，Hardly 同 Scarcely 配 when，No sooner 配 than。",
+      "想講「另一個人都一樣唔係／唔得」，就用 {Neither} 或 {Nor} 加 {auxiliary}，再加 {subject}。auxiliary 要同新嘅 subject 配合。",
+      "省略 {if}，將 {had}、{were} 或 {should} 搬到 {subject} 前面。講結果嗰部分保持原本次序。",
+      "想寫得正式或者有文學語氣，可以將表示次數或頻率嘅字眼放句首，再將 {auxiliary} 放喺 {subject} 前面。用普通次序都得。",
+      "用 Here 或 There 嚟提示人留意眼前嘅事：如果 {subject} 係 noun，{main verb} 可以放喺前面；如果係 pronoun，就保留 subject 喺前。"
+    ];
+    const chineseDemos = [
+      ["將 Never 搬到最前，再將 {auxiliary} have 放喺 {subject} I 前面。{main verb} seen 留喺 I 後面。",
+       "Rarely 放最前。原句冇 auxiliary，所以喺 {subject} Mia 前面加 {does}，再將 {main verb} eats 改做 eat。"],
+      ["Only then 放最前。呢句係過去式，所以喺 {subject} she 前面加 {did}，再將 {main verb} noticed 改做 notice。",
+       "將 Only after lunch 成組搬到最前，再將 {auxiliary} can 搬到 {subject} we 前面。"],
+      ["Hardly 放最前，再將 {auxiliary} had 搬到 {subject} I 前面。when 後面保持原本次序。",
+       "{No sooner} 同 than 一齊用。將 {auxiliary} had 搬到 {subject} we 前面，than 後面唔使改次序。"],
+      ["想講「我都唔識游水」，可以用 {Neither} 開頭，將 {auxiliary} can 放喺 {subject} I 前面。swim 已經講過，所以可以省略。",
+       "如果 Mia 未打電話，而 Ben 都未打，就可以答 {Nor} has Ben。has 係 {auxiliary}，Ben 係 {subject}，called 可以省略。"],
+      ["刪走 {if}，將 {had} 搬到 {subject} you 前面。逗號後面講結果嗰部分唔使改。",
+       "刪走 {if}，將 {should} 搬到 {subject} you 前面。逗號後面嘅指示保持原樣。"],
+      ["將 Often 搬到最前，再將 {auxiliary} have 放喺 {subject} I 前面。原本次序都啱，倒裝只係語氣較正式。",
+       "將 Twice 搬到最前。將第一個 {auxiliary} has 搬到 {subject} she 前面，been 留喺 she 後面。"],
+      ["The bus 係 noun {subject}，所以 {main verb} comes 放喺 the bus 前面。",
+       "It 係 pronoun {subject}，所以放喺 {main verb} goes 前面：There it goes。"]
+    ];
+    const chineseSpecial = {
+      "Little as a negative starter": "Little 喺呢度解「幾乎唔」或者「完全唔」。放喺句首時，將 {auxiliary} 放喺 {subject} 前面，例如 Little did I realise how late it was。",
+      "Hardly … when": "兩件事差唔多接住發生，就可以用 Hardly … when。第一個 clause 倒裝，when 後面保持原本次序。",
+      "No sooner … than": "第一個 clause 用 No sooner 開頭，將 {auxiliary} had 放喺 {subject} 前面，再用 than 帶出下一件事。",
+      "Negative agreement with Nor": "{Nor} 同 {Neither} 嘅用法一樣。前面已經講咗個 {main verb}，所以答到 {subject} 就得。",
+      "Conditional inversion with Were": "講假設情況時，可以省略 {if}，再將 {were} 放喺 {subject} 前面。例如 If I were you 變成 Were I you。",
+      "Conditional inversion with Should": "講有可能發生嘅情況時，可以省略 {if}，再將 {should} 放喺 {subject} 前面。例如 If it should rain 變成 Should it rain。"
+    };
+    const lessonVideos = [
+      ["W6Dw1IHUrwU", 0, "BBC Learning English: Simple inversion"],
+      ["ivrER84mTOc", 644, "Arnel's Everyday English: Only then and Only later"],
+      ["AzNxZGC-Hg0", 0, "BBC Learning English: Inversion after negative or limiting adverbs"],
+      ["SDVclL-ZoN0", 0, "BBC Learning English: So vs Neither"],
+      ["RmQH6B9P8r8", 0, "BBC Learning English: Reduced conditionals"],
+      ["W6Dw1IHUrwU", 0, "BBC Learning English: Simple inversion for emphasis"],
+      ["aIklwvL605c", 603, "Subject–Verb Inversion: Here and There"]
+    ];
+    const videoPanel = document.getElementById("lesson-video");
+    const videoPlayer = document.getElementById("video-player");
+    const videoLink = document.getElementById("video-link");
+    let currentLessonVideo = null;
+    function showLessonVideo(video) {
+      currentLessonVideo = video;
+      videoPanel.open = false;
+      videoPlayer.replaceChildren();
+      videoPanel.hidden = !video;
+      if (!video) return;
+      const [id, start] = video;
+      videoLink.href = `https://www.youtube.com/watch?v=${id}${start ? `&t=${start}s` : ""}`;
+    }
+    videoPanel.addEventListener("toggle", () => {
+      if (!videoPanel.open || !currentLessonVideo) {
+        videoPlayer.replaceChildren();
+        return;
+      }
+      if (videoPlayer.firstChild) return;
+      const video = currentLessonVideo;
+      const [id, start, title] = video;
+      const player = document.createElement("iframe");
+      player.title = title;
+      player.loading = "lazy";
+      player.referrerPolicy = "strict-origin-when-cross-origin";
+      player.allowFullscreen = true;
+      player.src = `https://www.youtube-nocookie.com/embed/${id}${start ? `?start=${start}` : ""}`;
+      videoPlayer.append(player);
+    });
+    const next = document.getElementById("next");
+    const exercise = document.getElementById("exercise");
+    const lesson = document.getElementById("lesson");
+    const begin = document.getElementById("begin");
+    const home = document.getElementById("home");
+    const homeLink = document.getElementById("home-link");
+    const progress = document.getElementById("progress");
+    let questions = [];
+    let sectionName = "";
+    let sectionChinese = 0;
+    let sectionDemos = [];
+    let demoIndex = 0;
+    let demoAnimations = [];
+    let arrowPairs = [];
+    let demoRun = 0;
+    const arrowLayer = document.getElementById("demo-arrows");
+    const demoPanel = document.getElementById("lesson-demo");
+    const replayDemo = document.getElementById("replay-demo");
+    const anotherDemo = document.getElementById("another-demo");
+    const demoColours = { "*": "aux", "^": "subject", "~": "verb", "+": "trigger" };
+    const termColours = {
+      auxiliary: "aux", subject: "subject", "main verb": "verb", starter: "trigger",
+      did: "aux", does: "aux", had: "aux", were: "aux", should: "aux",
+      Neither: "trigger", Nor: "trigger", if: "trigger", "No sooner": "trigger"
+    };
+
+    function colourExplanation(target, text) {
+      target.replaceChildren(...text.split(/(\{[^}]+\})/).map(part => {
+        if (!part.startsWith("{")) return document.createTextNode(part);
+        const term = part.slice(1, -1);
+        const mark = document.createElement("mark");
+        mark.className = termColours[term];
+        mark.textContent = term;
+        return mark;
+      }));
+    }
+
+    function drawArrows() {
+      arrowLayer.replaceChildren();
+      if (demoPanel.hidden || lesson.hidden) return;
+      drawDemoArrows(arrowLayer, arrowPairs);
+    }
+
+    function drawDemoArrows(layer, pairs) {
+      layer.replaceChildren();
+      const bounds = layer.getBoundingClientRect();
+      const svg = (tag, attributes) => {
+        const node = document.createElementNS("http://www.w3.org/2000/svg", tag);
+        for (const [key, value] of Object.entries(attributes)) node.setAttribute(key, value);
+        return node;
+      };
+      for (const [before, after] of pairs) {
+        if (window.matchMedia("(max-width: 520px)").matches && after.classList.length === 1) continue;
+        const from = before.getBoundingClientRect();
+        const to = after.getBoundingClientRect();
+        const x1 = from.left + from.width / 2 - bounds.left;
+        const x2 = to.left + to.width / 2 - bounds.left;
+        const y1 = from.bottom - bounds.top + 2;
+        const y2 = to.top - bounds.top - 3;
+        const middle = (y1 + y2) / 2;
+        const colour = after.classList.contains("aux") ? "#8b7019"
+          : after.classList.contains("subject") ? "#a4537c"
+          : after.classList.contains("verb") ? "#416b98" : "#52724a";
+        layer.append(
+          svg("path", { d: `M ${x1} ${y1} C ${x1} ${middle}, ${x2} ${middle}, ${x2} ${y2}`, fill: "none", stroke: colour, "stroke-width": 1.5 }),
+          svg("path", { d: `M ${x2 - 4} ${y2 - 5} L ${x2} ${y2} L ${x2 + 4} ${y2 - 5}`, fill: "none", stroke: colour, "stroke-width": 1.5 })
+        );
+      }
+    }
+    new ResizeObserver(drawArrows).observe(document.getElementById("demo-comparison"));
+
+    function fillDemoRow(row, line) {
+      const words = line.split("|").map(token => {
+        const span = document.createElement("span");
+        const colour = demoColours[token[0]];
+        span.className = colour ? `demo-word ${colour}` : "demo-word";
+        span.textContent = colour ? token.slice(1) : token;
+        return span;
+      });
+      row.replaceChildren(...words);
+      return words;
+    }
+
+    function matchDemoWords(oldWords, newWords) {
+      const aliases = { noticed: "notice", cannot: "can", eats: "eat" };
+      const key = word => {
+        const value = word.textContent.toLowerCase().replace(/[.,]$/, "");
+        return aliases[value] || value;
+      };
+      return newWords.map(word => [oldWords.find(item => key(item) === key(word)), word]);
+    }
+
+    function animateDemoWords(pairs) {
+      return pairs.map(([previous, word]) => {
+        let transform = "translate(0, 0)";
+        if (previous && word.classList.length > 1) {
+          const from = previous.getBoundingClientRect();
+          const to = word.getBoundingClientRect();
+          transform = `translate(${from.left - to.left}px, ${from.top - to.top}px)`;
+        }
+        return word.animate(
+          [{ opacity: 0, transform }, { opacity: 1, transform: "translate(0, 0)" }],
+          { duration: 1650, delay: 180, easing: "ease-in-out", fill: "backwards" }
+        );
+      });
+    }
+
+    for (const row of document.querySelectorAll("[data-example]")) {
+      const index = Number(row.dataset.example);
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "reference-demo-button";
+      button.textContent = "Show example";
+      const exampleRow = document.createElement("tr");
+      exampleRow.className = "reference-example";
+      exampleRow.id = `reference-example-${index}`;
+      exampleRow.hidden = true;
+      button.setAttribute("aria-controls", exampleRow.id);
+      button.setAttribute("aria-expanded", "false");
+      const cell = exampleRow.insertCell();
+      cell.colSpan = 2;
+      const [note, before, after] = demos[index];
+      const english = document.createElement("p");
+      const chinese = document.createElement("p");
+      chinese.className = "zh-note";
+      chinese.lang = "zh-HK";
+      colourExplanation(english, note);
+      colourExplanation(chinese, chineseDemos[index][0]);
+      cell.append(english, chinese);
+      const comparison = document.createElement("div");
+      comparison.className = "reference-comparison";
+      cell.append(comparison);
+      const rows = [before, after].map((line, i) => {
+        const label = document.createElement("p");
+        label.className = "demo-label";
+        label.textContent = i === 0 ? "Before inversion" : "After inversion";
+        const words = document.createElement("div");
+        words.className = "demo-row";
+        comparison.append(label, words);
+        return fillDemoRow(words, line);
+      });
+      const arrows = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      arrows.classList.add("reference-arrows");
+      arrows.setAttribute("aria-hidden", "true");
+      comparison.append(arrows);
+      const pairs = matchDemoWords(...rows).filter(([before, after]) => before && after.classList.length > 1);
+      let showArrows = false;
+      function refreshArrows() {
+        if (showArrows && !exampleRow.hidden && comparison.getClientRects().length) drawDemoArrows(arrows, pairs);
+      }
+      new ResizeObserver(refreshArrows).observe(comparison);
+      const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+      const replay = document.createElement("button");
+      replay.type = "button";
+      replay.className = "reference-demo-button";
+      replay.textContent = "Replay animation";
+      let animations = [];
+      function play() {
+        showArrows = false;
+        arrows.replaceChildren();
+        animations.forEach(animation => animation.cancel());
+        animations = reducedMotion.matches ? [] : animateDemoWords(matchDemoWords(...rows));
+        Promise.all(animations.map(animation => animation.finished)).then(() => {
+          showArrows = true;
+          refreshArrows();
+        }, () => {});
+      }
+      replay.hidden = reducedMotion.matches;
+      replay.addEventListener("click", play);
+      cell.append(replay);
+      button.addEventListener("click", () => {
+        exampleRow.hidden = !exampleRow.hidden;
+        button.setAttribute("aria-expanded", String(!exampleRow.hidden));
+        button.textContent = exampleRow.hidden ? "Show example" : "Hide example";
+        if (!exampleRow.hidden) play();
+        else animations.forEach(animation => animation.cancel());
+      });
+      row.cells[1].append(button);
+      row.after(exampleRow);
+    }
+
+    function showDemo(demo) {
+      const run = ++demoRun;
+      demoAnimations.forEach(animation => animation.cancel());
+      demoAnimations = [];
+      arrowPairs = [];
+      arrowLayer.replaceChildren();
+      demoPanel.hidden = !demo;
+      if (!demo) return;
+      document.getElementById("demo-count").textContent = `Example ${demoIndex + 1} of ${sectionDemos.length}`;
+      const [note, before, after] = demo;
+      colourExplanation(document.getElementById("demo-note"), note);
+      colourExplanation(document.getElementById("demo-chinese"), chineseDemos[sectionChinese][demoIndex]);
+      const oldWords = fillDemoRow(document.getElementById("demo-before"), before);
+      const newWords = fillDemoRow(document.getElementById("demo-after"), after);
+      replayDemo.hidden = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      const pairs = matchDemoWords(oldWords, newWords);
+      const revealArrows = () => {
+        if (run !== demoRun) return;
+        arrowPairs = pairs.filter(([before]) => before);
+        drawArrows();
+      };
+      if (replayDemo.hidden) {
+        revealArrows();
+        return;
+      }
+      demoAnimations = animateDemoWords(pairs);
+      Promise.all(demoAnimations.map(animation => animation.finished)).then(revealArrows, () => {});
+    }
+    replayDemo.addEventListener("click", () => showDemo(sectionDemos[demoIndex]));
+    anotherDemo.addEventListener("click", () => {
+      demoIndex = (demoIndex + 1) % sectionDemos.length;
+      showDemo(sectionDemos[demoIndex]);
+    });
+    let questionIndex = 0;
+    let tileById;
+    let correctOrder;
+    let solved = false;
+    let answerIds = [];
+    let bankIds = [];
+    let pointerDrag = null;
+    let lastDraggedId = null;
+    let lastDraggedAt = 0;
+
+    document.addEventListener("pointermove", event => {
+      const active = pointerDrag;
+      if (!active || event.pointerId !== active.pointerId) return;
+      if (!active.ghost && Math.hypot(event.clientX - active.startX, event.clientY - active.startY) > 6) {
+        const ghost = active.button.cloneNode(true);
+        ghost.classList.add("drag-ghost");
+        ghost.setAttribute("aria-hidden", "true");
+        ghost.tabIndex = -1;
+        document.body.append(ghost);
+        active.button.classList.add("drag-source");
+        active.ghost = ghost;
+      }
+      if (!active.ghost) return;
+      active.ghost.style.left = `${event.clientX - active.offsetX}px`;
+      active.ghost.style.top = `${event.clientY - active.offsetY}px`;
+      const hit = document.elementFromPoint(event.clientX, event.clientY);
+      answerZone.classList.toggle("drop-ready", answerZone.contains(hit));
+    });
+
+    function clearDrag() {
+      if (pointerDrag) {
+        pointerDrag.ghost?.remove();
+        pointerDrag.button.classList.remove("drag-source");
+      }
+      pointerDrag = null;
+      answerZone.classList.remove("drop-ready");
+    }
+
+    document.addEventListener("pointerup", event => {
+      const active = pointerDrag;
+      if (!active || event.pointerId !== active.pointerId) return;
+      clearDrag();
+      if (!active.ghost) return;
+      lastDraggedId = active.id;
+      lastDraggedAt = Date.now();
+      const hit = document.elementFromPoint(event.clientX, event.clientY);
+      const zone = hit && hit.closest("[data-zone]");
+      if (!zone) return;
+      const target = hit.closest("[data-tile-id]");
+      const targetId = target && target.dataset.zone === zone.dataset.zone ? target.dataset.tileId : null;
+      const bounds = target?.getBoundingClientRect();
+      const after = bounds && event.clientX > bounds.left + bounds.width / 2;
+      moveTile(active.id, active.from, zone.dataset.zone, targetId, after);
+    });
+
+    document.addEventListener("pointercancel", clearDrag);
+    window.addEventListener("blur", clearDrag);
+
+    function makeTile(id, zone) {
+      const data = tileById.get(id);
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = ["tile", data.kind].filter(Boolean).join(" ");
+      button.disabled = solved;
+      button.dataset.tileId = id;
+      button.dataset.zone = zone;
+      button.textContent = data.text;
+      const role = { aux: "auxiliary", verb: "main verb", subject: "subject" }[data.kind];
+      button.setAttribute("aria-label", [data.text, role, zone === "bank" ? "available" : "in answer"].filter(Boolean).join(", "));
+      button.addEventListener("pointerdown", event => {
+        if (!event.isPrimary || event.button !== 0) return;
+        const bounds = button.getBoundingClientRect();
+        pointerDrag = {
+          id, from: zone, button, pointerId: event.pointerId,
+          startX: event.clientX, startY: event.clientY,
+          offsetX: event.clientX - bounds.left, offsetY: event.clientY - bounds.top
+        };
+        button.setPointerCapture(event.pointerId);
+      });
+      button.addEventListener("click", event => {
+        if (lastDraggedId === id && Date.now() - lastDraggedAt < 150) {
+          lastDraggedId = null;
+          return;
+        }
+        const currentIndex = bankIds.indexOf(id);
+        moveTile(id, zone, zone === "bank" ? "answer" : "bank");
+        if (event.detail === 0) {
+          const nextTile = bank.children[Math.min(Math.max(currentIndex, 0), bank.children.length - 1)];
+          (nextTile || check).focus();
+        }
+      });
+      return button;
+    }
+
+    function render() {
+      document.getElementById("remaining").textContent = `${answerIds.length} / ${correctOrder.length} words placed`;
+      bank.replaceChildren(...bankIds.map(id => makeTile(id, "bank")));
+      answerWords.replaceChildren(...answerIds.map(id => makeTile(id, "answer")));
+      for (let i = answerIds.length; i < correctOrder.length; i++) {
+        const slot = document.createElement("span");
+        slot.className = "answer-slot";
+        slot.setAttribute("aria-hidden", "true");
+        answerWords.append(slot);
+      }
+    }
+
+    function moveTile(id, from, to, targetId = null, after = false) {
+      const source = from === "bank" ? bankIds : answerIds;
+      const destination = to === "bank" ? bankIds : answerIds;
+      const oldIndex = source.indexOf(id);
+      if (oldIndex < 0) return;
+      if (solved) return;
+      let insertAt = targetId !== null ? destination.indexOf(targetId) : destination.length;
+      if (targetId !== null && insertAt >= 0 && after) insertAt += 1;
+      source.splice(oldIndex, 1);
+      if (from === to && oldIndex < insertAt) insertAt -= 1;
+      if (insertAt < 0) insertAt = destination.length;
+      destination.splice(insertAt, 0, id);
+      feedback.textContent = "";
+      render();
+    }
+
+    check.addEventListener("click", () => {
+      solved = answerIds.length === correctOrder.length && answerIds.every((id, i) => tileById.get(id).text === correctOrder[i]);
+      const round = questions[questionIndex];
+      feedback.className = solved ? "ok" : "bad";
+      answerZone.classList.remove("wrong");
+      if (!solved) { void answerZone.offsetWidth; answerZone.classList.add("wrong"); }
+      feedback.textContent = solved
+        ? `Correct! ${round.start} ${correctOrder.join(" ")}${round.end || "."} ${round.tip}`
+        : `Try again. ${round.tip}`;
+      if (!solved) return;
+      recordProgress();
+      updateClassProgress();
+      answerZone.classList.add("correct");
+      check.hidden = true;
+      next.hidden = false;
+      render();
+      next.focus();
+    });
+
+    document.addEventListener("keydown", event => {
+      if (event.key !== "Enter" || exercise.hidden || event.target.closest("button, textarea")) return;
+      (next.hidden ? check : next).click();
+    });
+
+    function loadQuestion() {
+      const round = questions[questionIndex];
+      const tokens = round.order.split(" ");
+      const wordText = token => token.replace(/^[*~^]/, "").replace(/\./g, "");
+      correctOrder = tokens.map(wordText);
+      const extras = round.extra ? round.extra.split(" ") : [];
+      tileById = new Map([...tokens, ...extras].map((token, id) => [String(id), {
+        text: wordText(token),
+        kind: token.startsWith("*") ? "aux" : token.startsWith("~") ? "verb" : token.startsWith("^") ? "subject" : ""
+      }]));
+      bankIds = [...tileById.keys()];
+      for (let i = bankIds.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [bankIds[i], bankIds[j]] = [bankIds[j], bankIds[i]];
+      }
+      answerIds = [];
+      solved = false;
+      updateClassProgress();
+      document.getElementById("original").textContent = round.original;
+      document.getElementById("instruction").textContent = `Rewrite starting with “${round.start}”.`;
+      const starter = document.getElementById("starter");
+      starter.textContent = round.start;
+      starter.className = ["Had", "Should"].includes(round.start) ? "starter aux" : "starter";
+      document.getElementById("ending").textContent = round.end || "";
+      answerZone.classList.remove("correct", "wrong");
+      feedback.textContent = "";
+      check.hidden = false;
+      next.hidden = true;
+      next.textContent = questionIndex === questions.length - 1 ? "Finish section" : "Next question";
+      lesson.hidden = !round.lesson;
+      exercise.hidden = Boolean(round.lesson);
+      if (round.lesson) {
+        document.getElementById("lesson-title").textContent = round.lesson[0];
+        document.getElementById("lesson-text").textContent = round.lesson[1];
+        colourExplanation(document.getElementById("lesson-chinese"),
+          chineseSpecial[round.lesson[0]] || chineseRules[sectionChinese]);
+      }
+      showDemo(questionIndex === 0 ? sectionDemos[demoIndex] : null);
+      showLessonVideo(questionIndex === 0 ? lessonVideos[sectionChinese] : null);
+      render();
+    }
+
+    begin.addEventListener("click", () => {
+      showLessonVideo(null);
+      showDemo(null);
+      lesson.hidden = true;
+      exercise.hidden = false;
+      bank.querySelector("button").focus();
+    });
+    next.addEventListener("click", () => {
+      if (questionIndex === questions.length - 1) {
+        showHome(`Completed all ${questions.length} questions in ${sectionName}.`);
+        return;
+      }
+      questionIndex += 1;
+      loadQuestion();
+      (lesson.hidden ? bank.querySelector("button") : begin).focus();
+    });
+
+    const sectionList = document.getElementById("section-list");
+    const progressKey = "inversion-game.class-progress.v1";
+    let savedProgress = {};
+    try {
+      const stored = JSON.parse(localStorage.getItem(progressKey));
+      if (stored && typeof stored === "object") savedProgress = stored;
+    } catch {}
+    const classCards = [];
+    function completedCount(index, total) {
+      const count = savedProgress[index];
+      return Number.isInteger(count) ? Math.min(total, Math.max(0, count)) : 0;
+    }
+    function classStatus(index, total, current) {
+      const completed = completedCount(index, total);
+      return `${Math.round(completed * 100 / total)}% complete · Question ${current} of ${total}`;
+    }
+    function updateClassProgress() {
+      progress.textContent = `${sectionName} · ${classStatus(sectionChinese, questions.length, questionIndex + 1)}`;
+    }
+    function recordProgress() {
+      savedProgress[sectionChinese] = Math.max(completedCount(sectionChinese, questions.length), questionIndex + 1);
+      try {
+        localStorage.setItem(progressKey, JSON.stringify(savedProgress));
+      } catch {
+        feedback.textContent += " Progress is available for this session only because browser storage is unavailable.";
+      }
+    }
+    function makeQuestions([, indices, additions, rule]) {
+      return [
+        ...indices.map(index => base[index]),
+        ...additions.map(([start, original, order, extra, end]) => ({ start, original, order, extra, end, tip: rule }))
+      ];
+    }
+
+    const exam = document.getElementById("exam");
+    const examForm = document.getElementById("exam-form");
+    const examAnswer = document.getElementById("exam-answer");
+    const examTop = document.getElementById("exam-top");
+    const EXAM_LENGTH = 20;
+    // Extra questions used only in the exam, one list per section (same order as sections).
+    const examBank = [
+      [
+        ["Never","He has never told a lie.","*has ^he ~told a lie"],
+        ["Seldom","She seldom visits her old school.","*does ^she ~visit her old school"],
+        ["Under no circumstances","You should not share your password under any circumstances.","*should ^you ~share your password"],
+        ["Not until midnight","The party did not end until midnight.","*did ^the ^party ~end"],
+        ["Little","They had no idea how dangerous the trip would be.","*did ^they ~know how dangerous the trip would be"],
+        ["At no time","The pilot was at no time in danger.","*was ^the ^pilot in danger"],
+        ["Rarely","We rarely see such talent.","*do ^we ~see such talent"]
+      ],
+      [
+        ["Only then","I understood the problem only then.","*did ^I ~understand the problem"],
+        ["Only after the storm had passed","We went outside only after the storm had passed.","*did ^we ~go outside"],
+        ["Only by saving money","You can buy a new bike only by saving money.","*can ^you ~buy a new bike"],
+        ["Only when the teacher arrived","The class became quiet only when the teacher arrived.","*did ^the ^class ~become quiet"],
+        ["Only recently","Scientists have discovered the cause only recently.","*have ^scientists ~discovered the cause"],
+        ["Only at night","The owls hunt only at night.","*do ^the ^owls ~hunt"]
+      ],
+      [
+        ["No sooner","As soon as we had arrived, it began to snow.","*had ^we ~arrived",""," than it began to snow."],
+        ["Hardly","I had hardly closed my eyes when the baby cried.","*had ^I ~closed my eyes",""," when the baby cried."],
+        ["Not only","She sings and also plays the guitar.","*does ^she ~sing","",", but she also plays the guitar."],
+        ["Scarcely","He had scarcely left the house when it started to rain.","*had ^he ~left the house",""," when it started to rain."],
+        ["Not only","They missed the train and also lost their tickets.","*did ^they ~miss the train","",", but they also lost their tickets."],
+        ["No sooner","As soon as the show had started, the lights failed.","*had ^the ^show ~started",""," than the lights failed."]
+      ],
+      [
+        ["Neither","Jack cannot cook. His brother cannot cook either.","*can ^his ^brother"],
+        ["Nor","I was not at the meeting. Sarah was not at the meeting either.","*was ^Sarah"],
+        ["Neither","We have not finished. They have not finished either.","*have ^they"],
+        ["Nor","Ella does not like spiders. Her friends do not like them either.","*do ^her ^friends"],
+        ["Neither","The first test was not easy. The second test was not easy either.","*was ^the ^second ^test"],
+        ["Nor","Max did not see the film. I did not see it either.","*did ^I"]
+      ],
+      [
+        ["Had","If I had studied harder, I would have passed.","^I ~studied harder","",", I would have passed."],
+        ["Were","If we were rich, we would travel the world.","^we rich","",", we would travel the world."],
+        ["Should","If you should see Tom, say hello.","^you ~see Tom","",", say hello."],
+        ["Had","If she had known the truth, she would have left.","^she ~known the truth","",", she would have left."],
+        ["Were","If the weather were better, we could go hiking.","^the ^weather better","",", we could go hiking."],
+        ["Should","If the flight should be delayed, we will call you.","^the ^flight *be ~delayed","",", we will call you."]
+      ],
+      [
+        ["Often","She has often dreamed of flying.","*has ^she ~dreamed of flying"],
+        ["Twice","I have been late twice this week.","*have ^I *been late this week"],
+        ["Many a time","He has helped me many times.","*has ^he ~helped me"],
+        ["Often","We have often walked along this river.","*have ^we ~walked along this river"],
+        ["Twice","The team has won the cup twice.","*has ^the ^team ~won the cup"],
+        ["Many a time","I have watched the sunset from this hill many times.","*have ^I ~watched the sunset from this hill"]
+      ],
+      [
+        ["Here","The teacher is coming.","~comes ^the ^teacher"],
+        ["There","They are going.","^they ~go"],
+        ["Here","We are coming.","^we ~come"],
+        ["There","The last train is going.","~goes ^the ^last ^train"],
+        ["Here","Your food is coming.","~comes ^your ^food"],
+        ["There","My chance is going.","~goes ^my ^chance"]
+      ]
+    ];
+    function examPool(index) {
+      const extra = examBank[index].map(([start, original, order, extra, end]) => ({ start, original, order, extra, end }));
+      return [...makeQuestions(sections[index]), ...extra].map(round => ({ ...round, section: index }));
+    }
+    // Spread the questions across the types as evenly as possible.
+    function buildExam() {
+      const order = shuffle(sections.map((_, i) => i));
+      const counts = order.map((_, i) => Math.floor(EXAM_LENGTH / sections.length) + (i < EXAM_LENGTH % sections.length ? 1 : 0));
+      return shuffle(order.flatMap((index, i) => shuffle(examPool(index)).slice(0, counts[i])));
+    }
+    // Accept answers with or without the starter, and with or without the unchanged ending.
+    function gradeAnswer(typed, round) {
+      const starter = normalizeAnswer(round.start);
+      let answer = normalizeAnswer(typed);
+      while (answer.startsWith(`${starter} ${starter} `)) answer = answer.slice(starter.length + 1);
+      if (answer !== starter && !answer.startsWith(`${starter} `)) answer = `${starter} ${answer}`;
+      const full = normalizeAnswer(expectedAnswer(round));
+      const short = normalizeAnswer(`${round.start} ${round.order.replace(/[*~^]/g, "")}`);
+      return answer === full || answer === short;
+    }
+    function typeStats(results) {
+      const stats = sections.map(([name]) => ({ name, right: 0, total: 0 }));
+      for (const result of results) for (const response of result.responses) {
+        if (!Number.isInteger(response.section) || !stats[response.section]) continue;
+        stats[response.section].total++;
+        if (response.correct) stats[response.section].right++;
+      }
+      return stats.filter(stat => stat.total).sort((a, b) => a.right / a.total - b.right / b.total);
+    }
+    function renderTypeStats(list, stats) {
+      list.replaceChildren(...stats.map(stat => {
+        const pct = Math.round(stat.right * 100 / stat.total);
+        const item = document.createElement("li");
+        if (pct < 70) item.className = "weak";
+        const name = document.createElement("span");
+        name.className = "name";
+        name.textContent = stat.name;
+        const score = document.createElement("span");
+        score.className = "pct";
+        score.textContent = `${pct}% · ${stat.right}/${stat.total}`;
+        const bar = document.createElement("span");
+        bar.className = "bar";
+        const fill = document.createElement("span");
+        fill.style.width = `${Math.max(pct, 3)}%`;
+        fill.style.background = pct >= 85 ? "#7fb069" : pct >= 70 ? "#c9b458" : "#d9826b";
+        bar.append(fill);
+        item.append(name, score, bar);
+        return item;
+      }));
+    }
+    const examResults = document.getElementById("exam-results");
+    const examPrompt = document.getElementById("exam-prompt");
+    const examOriginal = document.getElementById("exam-original");
+    let examQuestions = [];
+    let examResponses = [];
+    const examHistoryKey = "inversion-game.exam-history.v1";
+    let examHistory = [];
+    try {
+      const stored = JSON.parse(localStorage.getItem(examHistoryKey));
+      if (Array.isArray(stored)) examHistory = stored.filter(result => Array.isArray(result?.responses) && result.responses.length);
+    } catch {}
+
+    function appendTypedAnswer(target, response) {
+      // Expected words with their role colour (starter, aux, subject, verb), taken from the model answer.
+      let expected = response.expected.split(/\s+/).map(text => ({ text, kind: "" }));
+      if (response.model) {
+        const { start: starter, order, end: ending } = response.model;
+        const starterKind = ["Had", "Should"].includes(starter) ? "aux" : "trigger";
+        expected = [
+          ...starter.split(" ").map(text => ({ text, kind: starterKind })),
+          ...order.split(" ").map(token => demoColours[token[0]]
+            ? { text: token.slice(1), kind: demoColours[token[0]] } : { text: token, kind: "" }),
+          ...(ending || "").split(/\s+/).map(text => ({ text, kind: "" }))
+        ].filter(word => normalizeAnswer(word.text));
+      }
+      const typed = response.typed.split(/\s+/);
+      let start = 0;
+      let end = 0;
+      while (start < Math.min(typed.length, expected.length) &&
+        normalizeAnswer(typed[start]) === normalizeAnswer(expected[start].text)) start++;
+      while (end < Math.min(typed.length, expected.length) - start &&
+        normalizeAnswer(typed[typed.length - 1 - end]) === normalizeAnswer(expected[expected.length - 1 - end].text)) end++;
+      typed.forEach((word, index) => {
+        if (index) target.append(" ");
+        const inMiddle = index >= start && index < typed.length - end;
+        const kind = inMiddle ? (response.correct ? "" : "review-difference")
+          : index < start ? expected[index].kind
+          : expected[expected.length - (typed.length - index)].kind;
+        if (!kind) {
+          target.append(word);
+          return;
+        }
+        const mark = document.createElement("mark");
+        mark.className = kind;
+        mark.textContent = word;
+        target.append(mark);
+      });
+      if (!response.correct && start + end >= typed.length) {
+        const missing = document.createElement("mark");
+        missing.className = "review-difference";
+        missing.textContent = "missing words";
+        target.append(" ", missing);
+      }
+    }
+
+    function appendModelAnswer(target, response) {
+      if (!response.model) {
+        target.append(response.expected);
+        return;
+      }
+      const { start, order, end } = response.model;
+      const starter = document.createElement("mark");
+      starter.className = ["Had", "Should"].includes(start) ? "aux" : "trigger";
+      starter.textContent = start;
+      target.append(starter);
+      for (const token of order.split(" ")) {
+        target.append(" ");
+        const colour = demoColours[token[0]];
+        if (colour) {
+          const mark = document.createElement("mark");
+          mark.className = colour;
+          mark.textContent = token.slice(1);
+          target.append(mark);
+        } else target.append(token);
+      }
+      target.append(end || (order.endsWith(".") ? "" : "."));
+    }
+
+    function shuffle(items) {
+      const result = [...items];
+      for (let i = result.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [result[i], result[j]] = [result[j], result[i]];
+      }
+      return result;
+    }
+    function expectedAnswer(round) {
+      return `${round.start} ${round.order.replace(/[*~^]/g, "")}${round.end || ""}`.replace(/\.$/, "") + ".";
+    }
+    function normalizeAnswer(value) {
+      return value.toLowerCase().replace(/[.!?,]/g, " ").replace(/\s+/g, " ").trim();
+    }
+    function loadExamQuestion() {
+      const round = examQuestions[examResponses.length];
+      progress.textContent = "";
+      const bar = document.getElementById("exam-bar");
+      bar.max = examQuestions.length;
+      bar.value = examResponses.length;
+      document.getElementById("exam-count").textContent = `${examResponses.length + 1} / ${examQuestions.length}`;
+      const shortReply = ["Neither", "Nor"].includes(round.start);
+      examPrompt.textContent = shortReply
+        ? `Reply to the first sentence with a short answer starting with “${round.start}”.`
+        : `Rewrite the sentence starting with “${round.start}”.${round.start === "Little" ? " Use know." : ""}`;
+      examOriginal.textContent = round.original;
+      examAnswer.value = `${round.start} `;
+      examAnswer.focus();
+      examAnswer.setSelectionRange(examAnswer.value.length, examAnswer.value.length);
+    }
+    examAnswer.addEventListener("keydown", event => {
+      if (event.key === "Enter" && !event.shiftKey) {
+        event.preventDefault();
+        examForm.requestSubmit();
+      }
+    });
+    document.getElementById("start-exam").addEventListener("click", () => {
+      examQuestions = buildExam();
+      examResponses = [];
+      home.hidden = true;
+      homeLink.hidden = false;
+      exam.hidden = false;
+      examForm.hidden = false;
+      examTop.hidden = false;
+      examPrompt.hidden = false;
+      examOriginal.parentElement.hidden = false;
+      examResults.hidden = true;
+      loadExamQuestion();
+    });
+    examForm.addEventListener("submit", event => {
+      event.preventDefault();
+      const round = examQuestions[examResponses.length];
+      const typed = examAnswer.value.trim().replace(/\s+/g, " ");
+      if (!typed || normalizeAnswer(typed) === normalizeAnswer(round.start)) {
+        examAnswer.focus();
+        return;
+      }
+      examResponses.push({ typed, expected: expectedAnswer(round), original: round.original, prompt: examPrompt.textContent,
+        section: round.section,
+        model: { start: round.start, order: round.order, end: round.end },
+        correct: gradeAnswer(typed, round) });
+      if (examResponses.length < examQuestions.length) {
+        loadExamQuestion();
+        return;
+      }
+      const result = { date: new Date().toISOString(), responses: examResponses };
+      examHistory.unshift(result);
+      let saved = true;
+      try {
+        localStorage.setItem(examHistoryKey, JSON.stringify(examHistory));
+      } catch {
+        saved = false;
+      }
+      showExamResult(result, saved ? "Saved in this browser." : "Browser storage is unavailable. This result is available until you close or refresh the page.");
+    });
+
+    function showExamResult(result, message = "") {
+      const responses = result.responses;
+      home.hidden = true;
+      homeLink.hidden = false;
+      exam.hidden = false;
+      examForm.hidden = true;
+      examTop.hidden = true;
+      const resultStats = document.getElementById("result-stats");
+      renderTypeStats(resultStats, typeStats([result]));
+      resultStats.parentElement.hidden = !resultStats.children.length;
+      examPrompt.hidden = true;
+      examOriginal.parentElement.hidden = true;
+      examResults.hidden = false;
+      progress.textContent = `Exam complete · ${responses.length} of ${responses.length} questions`;
+      const score = document.getElementById("exam-score");
+      score.textContent = `Score: ${responses.filter(response => response.correct).length} / ${responses.length}`;
+      const review = document.getElementById("exam-review");
+      review.replaceChildren();
+      for (const [index, response] of responses.entries()) {
+        const item = document.createElement("li");
+        item.className = response.correct ? "review-correct" : "review-incorrect";
+        item.style.animationDelay = `${Math.min(index, 6) * 45}ms`;
+        const heading = document.createElement("h3");
+        heading.textContent = `Question ${index + 1} · ${response.correct ? "Correct" : "Incorrect"}`;
+        item.append(heading);
+        for (const [label, value] of [
+          ["Question", response.prompt],
+          ["Original sentence", response.original],
+          ["Your answer", response.typed],
+          ["Model answer", response.expected]
+        ]) {
+          const paragraph = document.createElement("p");
+          const title = document.createElement("strong");
+          title.textContent = label;
+          paragraph.append(title);
+          if (label === "Your answer") {
+            paragraph.className = "review-answer";
+            appendTypedAnswer(paragraph, response);
+          } else if (label === "Model answer") {
+            paragraph.className = "review-answer";
+            appendModelAnswer(paragraph, response);
+          } else paragraph.append(document.createTextNode(value));
+          item.append(paragraph);
+        }
+        review.append(item);
+      }
+      review.previousElementSibling.textContent = [message, "Review all questions in exam order. Scoring ignores capitalisation and punctuation."].filter(Boolean).join(" ");
+      score.focus();
+    }
+
+    function renderExamHistory() {
+      const list = document.getElementById("exam-history-list");
+      list.replaceChildren();
+      document.getElementById("exam-history").hidden = !examHistory.length;
+      const stats = typeStats(examHistory);
+      document.getElementById("home-stats").hidden = !stats.length;
+      renderTypeStats(document.getElementById("home-stats-list"), stats);
+      const counted = examHistory.filter(result => result.responses.some(response => Number.isInteger(response.section))).length;
+      document.getElementById("home-stats-note").textContent = `Across ${counted} exam${counted === 1 ? "" : "s"}. Weakest types are listed first.`;
+      for (const result of examHistory) {
+        const item = document.createElement("li");
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "reference-demo-button";
+        const score = result.responses.filter(response => response.correct).length;
+        button.textContent = `${new Date(result.date).toLocaleString()} · ${score} / ${result.responses.length}`;
+        button.addEventListener("click", () => showExamResult(result));
+        item.append(button);
+        list.append(item);
+      }
+    }
+
+    function showHome(message = "") {
+      showLessonVideo(null);
+      showDemo(null);
+      home.hidden = false;
+      homeLink.hidden = true;
+      lesson.hidden = true;
+      exercise.hidden = true;
+      exam.hidden = true;
+      renderExamHistory();
+      progress.textContent = message;
+      for (const [index, card] of classCards.entries()) {
+        const completed = completedCount(index, card.total);
+        card.bar.value = completed;
+        card.status.textContent = classStatus(index, card.total, Math.min(completed + 1, card.total));
+      }
+      sectionList.querySelector("button").focus();
+    }
+    for (const [index, [name, indices, extra, rule]] of sections.entries()) {
+      const button = document.createElement("button");
+      button.type = "button";
+      const status = document.createElement("span");
+      status.className = "class-progress";
+      const bar = document.createElement("progress");
+      bar.className = "class-progress-bar";
+      bar.max = indices.length + extra.length;
+      bar.value = 0;
+      bar.setAttribute("aria-hidden", "true");
+      button.append(name, bar, status);
+      classCards.push({ status, bar, total: bar.max });
+      button.addEventListener("click", () => {
+        sectionName = name;
+        sectionChinese = index;
+        sectionDemos = [demos[index], alternateDemos[index]];
+        demoIndex = 0;
+        questions = makeQuestions(sections[index]);
+        const first = questions[0];
+        questions[0] = { ...first, lesson: [name, rule] };
+        const completed = completedCount(index, questions.length);
+        questionIndex = completed === questions.length ? 0 : completed;
+        home.hidden = true;
+        homeLink.hidden = false;
+        loadQuestion();
+        (lesson.hidden ? bank.querySelector("button") : begin).focus();
+      });
+      sectionList.append(button);
+    }
+    homeLink.addEventListener("click", () => showHome());
+
+    const backupNote = document.getElementById("backup-note");
+    document.getElementById("download-results").addEventListener("click", () => {
+      const data = { app: "inversion-game", version: 1, progress: savedProgress, exams: examHistory };
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(new Blob([JSON.stringify(data)], { type: "application/json" }));
+      link.download = `inversion-results-${new Date().toISOString().slice(0, 10)}.json`;
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+      backupNote.textContent = "Results file downloaded. Use “Load results file” to restore it later or on another device.";
+    });
+    document.getElementById("load-results").addEventListener("change", async event => {
+      const file = event.target.files[0];
+      event.target.value = "";
+      if (!file) return;
+      try {
+        const data = JSON.parse(await file.text());
+        if (data?.app !== "inversion-game" || !Array.isArray(data.exams)) throw new Error();
+        // Merge: keep the best progress per class, and add exams not already saved.
+        for (const [key, count] of Object.entries(data.progress || {}))
+          if (Number.isInteger(count)) savedProgress[key] = Math.max(savedProgress[key] || 0, count);
+        const known = new Set(examHistory.map(result => result.date));
+        const added = data.exams.filter(result => Array.isArray(result?.responses) && result.responses.length && !known.has(result.date));
+        examHistory = [...examHistory, ...added].sort((a, b) => String(b.date).localeCompare(String(a.date)));
+        let saved = true;
+        try {
+          localStorage.setItem(progressKey, JSON.stringify(savedProgress));
+          localStorage.setItem(examHistoryKey, JSON.stringify(examHistory));
+        } catch { saved = false; }
+        showHome();
+        backupNote.textContent = `Loaded ${added.length} exam${added.length === 1 ? "" : "s"} and class progress.` +
+          (saved ? "" : " Browser storage is unavailable, so they last only until you close this page.");
+      } catch {
+        backupNote.textContent = "That file could not be read. Choose a file made with “Download my results”.";
+      }
+    });
+    showHome();
+  </script>
+</body>
+</html>
